@@ -26,62 +26,47 @@ void adicionarRegistro(FILE *arquivo) {
     scanf("%d", &opcao);
 
     if (opcao == 1) {
-        // Movendo o cursor para o início do arquivo e escrevendo o novo produto
+        // Abrindo um arquivo temporário para escrever os registros existentes
+        FILE *temp = fopen("temp.txt", "w");
+
+        // Escrevendo o novo produto no início do arquivo temporário
+        fprintf(temp, "%d,%s,%.2f\n", novoProduto.codigo, novoProduto.nome, novoProduto.preco);
+
+        // Lendo os registros existentes no arquivo original e escrevendo no arquivo temporário
         rewind(arquivo);
-        fwrite(&novoProduto, sizeof(struct Produto), 1, arquivo);
+        struct Produto produto;
+        while (fscanf(arquivo, "%d,%49[^,],%f\n", &produto.codigo, produto.nome, &produto.preco) == 3) {
+            fprintf(temp, "%d,%s,%.2f\n", produto.codigo, produto.nome, produto.preco);
+        }
+
+        // Fechando os arquivos
+        fclose(arquivo);
+        fclose(temp);
+
+        // Removendo o arquivo original e renomeando o temporário
+        remove("produtos.txt");
+        rename("temp.txt", "produtos.txt");
     } else if (opcao == 2) {
-        // Movendo o cursor para o final do arquivo e escrevendo o novo produto
-        fseek(arquivo, 0, SEEK_END);
-        fwrite(&novoProduto, sizeof(struct Produto), 1, arquivo);
+        // Escrevendo o novo produto no final do arquivo
+        fprintf(arquivo, "%d,%s,%.2f\n", novoProduto.codigo, novoProduto.nome, novoProduto.preco);
     } else {
         printf("Opção inválida. O registro será adicionado no final do arquivo.\n");
-        fseek(arquivo, 0, SEEK_END);
-        fwrite(&novoProduto, sizeof(struct Produto), 1, arquivo);
+        // Escrevendo o novo produto no final do arquivo
+        fprintf(arquivo, "%d,%s,%.2f\n", novoProduto.codigo, novoProduto.nome, novoProduto.preco);
     }
 }
 
 // Função para listar todos os registros contidos no arquivo
 void listarRegistros(FILE *arquivo) {
     struct Produto produto;
-    int opcao, totalRegistros = 0;
-
-    // Verificando o número total de registros no arquivo
-    fseek(arquivo, 0, SEEK_END);
-    totalRegistros = ftell(arquivo) / sizeof(struct Produto);
 
     // Voltando para o início do arquivo
     rewind(arquivo);
 
-    // Solicitando ao usuário o tipo de visualização desejada
-    printf("Escolha o tipo de visualização:\n");
-    printf("1. Os 5 primeiros registros\n");
-    printf("2. Os 5 últimos registros\n");
-    printf("3. Todos os registros\n");
-    printf("Opção: ");
-    scanf("%d", &opcao);
-
-    switch (opcao) {
-        case 1:
-            printf("Os 5 primeiros registros:\n");
-            for (int i = 0; i < 5 && fread(&produto, sizeof(struct Produto), 1, arquivo); i++) {
-                printf("Código: %d, Nome: %s, Preço: %.2f\n", produto.codigo, produto.nome, produto.preco);
-            }
-            break;
-        case 2:
-            printf("Os 5 últimos registros:\n");
-            fseek(arquivo, -sizeof(struct Produto) * 5, SEEK_END);
-            for (int i = 0; i < 5 && fread(&produto, sizeof(struct Produto), 1, arquivo); i++) {
-                printf("Código: %d, Nome: %s, Preço: %.2f\n", produto.codigo, produto.nome, produto.preco);
-            }
-            break;
-        case 3:
-            printf("Todos os registros:\n");
-            while (fread(&produto, sizeof(struct Produto), 1, arquivo)) {
-                printf("Código: %d, Nome: %s, Preço: %.2f\n", produto.codigo, produto.nome, produto.preco);
-            }
-            break;
-        default:
-            printf("Opção inválida.\n");
+    // Lendo e exibindo cada registro
+    printf("Todos os registros:\n");
+    while (fscanf(arquivo, "%d,%49[^,],%f\n", &produto.codigo, produto.nome, &produto.preco) == 3) {
+        printf("Código: %d, Nome: %s, Preço: %.2f\n", produto.codigo, produto.nome, produto.preco);
     }
 }
 
@@ -94,41 +79,10 @@ void buscarRegistro(FILE *arquivo, int codigo) {
     rewind(arquivo);
 
     // Buscando o registro pelo código
-    while (fread(&produto, sizeof(struct Produto), 1, arquivo)) {
+    while (fscanf(arquivo, "%d,%49[^,],%f\n", &produto.codigo, produto.nome, &produto.preco) == 3) {
         if (produto.codigo == codigo) {
             printf("Registro encontrado:\n");
             printf("Código: %d, Nome: %s, Preço: %.2f\n", produto.codigo, produto.nome, produto.preco);
-            encontrado = 1;
-            break;
-        }
-    }
-
-    // Verificando se o registro foi encontrado
-    if (!encontrado) {
-        printf("Registro não encontrado.\n");
-    }
-}
-
-// Função para atualizar um registro pelo código
-void atualizarRegistro(FILE *arquivo, int codigo) {
-    struct Produto produto;
-    int encontrado = 0;
-
-    // Voltando para o início do arquivo
-    rewind(arquivo);
-
-    // Buscando o registro pelo código
-    while (fread(&produto, sizeof(struct Produto), 1, arquivo)) {
-        if (produto.codigo == codigo) {
-            // Solicitando novas informações ao usuário
-            printf("Digite o novo nome do produto: ");
-            scanf(" %[^\n]", produto.nome);
-            printf("Digite o novo preço do produto: ");
-            scanf("%f", &produto.preco);
-
-            // Movendo o cursor de volta e atualizando o registro no arquivo
-            fseek(arquivo, -sizeof(struct Produto), SEEK_CUR);
-            fwrite(&produto, sizeof(struct Produto), 1, arquivo);
             encontrado = 1;
             break;
         }
@@ -147,15 +101,15 @@ void removerRegistro(FILE *arquivo, int codigo) {
     int encontrado = 0;
 
     // Abrindo um arquivo temporário para escrever os registros exceto o que será removido
-    temp = fopen("temp.dat", "wb");
+    temp = fopen("temp.txt", "w");
 
     // Voltando para o início do arquivo
     rewind(arquivo);
 
     // Escrevendo no arquivo temporário todos os registros exceto o que será removido
-    while (fread(&produto, sizeof(struct Produto), 1, arquivo)) {
+    while (fscanf(arquivo, "%d,%49[^,],%f\n", &produto.codigo, produto.nome, &produto.preco) == 3) {
         if (produto.codigo != codigo) {
-            fwrite(&produto, sizeof(struct Produto), 1, temp);
+            fprintf(temp, "%d,%s,%.2f\n", produto.codigo, produto.nome, produto.preco);
         } else {
             encontrado = 1;
         }
@@ -165,8 +119,8 @@ void removerRegistro(FILE *arquivo, int codigo) {
     fclose(temp);
 
     // Removendo o arquivo original e renomeando o temporário
-    remove("produtos.dat");
-    rename("temp.dat", "produtos.dat");
+    remove("produtos.txt");
+    rename("temp.txt", "produtos.txt");
 
     // Verificando se o registro foi removido
     if (encontrado) {
@@ -181,7 +135,7 @@ int main() {
     int opcao, codigo;
 
     // Abrindo o arquivo de produtos (ou criando se não existir)
-    arquivo = fopen("produtos.dat", "ab+");
+    arquivo = fopen("produtos.txt", "a+");
 
     // Verificando se o arquivo foi aberto corretamente
     if (arquivo == NULL) {
@@ -194,8 +148,7 @@ int main() {
         printf("\n1. Adicionar um novo registro\n");
         printf("2. Listar registros\n");
         printf("3. Buscar um registro\n");
-        printf("4. Atualizar um registro\n");
-        printf("5. Remover um registro\n");
+        printf("4. Remover um registro\n");
         printf("0. Sair\n");
         printf("Escolha uma opção: ");
         scanf("%d", &opcao);
@@ -214,11 +167,6 @@ int main() {
                 buscarRegistro(arquivo, codigo);
                 break;
             case 4:
-                printf("Digite o código do produto a ser atualizado: ");
-                scanf("%d", &codigo);
-                atualizarRegistro(arquivo, codigo);
-                break;
-            case 5:
                 printf("Digite o código do produto a ser removido: ");
                 scanf("%d", &codigo);
                 removerRegistro(arquivo, codigo);
